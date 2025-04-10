@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with CodeBot 🤖</title>
+  <style>
+    body {
+        background-color: aqua;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome!</h1>
+
+  <!-- Login/Register -->
+  <div id="loginDiv">
+    <input type="text" id="username" placeholder="Enter your name"><br><br>
+    <input type="password" id="password" placeholder="Enter your password"><br><br>
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Log In</button>
+    <br><br>
+    <button onclick="forgotPassword()">Forgot Password?</button>
+  </div>
+
+  <!-- Chat and Welcome -->
+  <div id="welcomeDiv" style="display: none;">
+    <h2 id="welcomeMessage"></h2>
+    <button onclick="logout()">Log Out</button>
+
+    <hr>
+
+    <div>
+      <h3>Chat:</h3>
+      <div id="chatBox" style="border: 1px solid #000; padding: 10px; height: 200px; overflow-y: scroll;">
+        <!-- Messages will go here -->
+      </div>
+      <input type="text" id="chatMessage" placeholder="Type your message">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    function forgotPassword() {
+        let username = prompt("Enter your username:");
+        if (!username) return;
+
+        let users = JSON.parse(localStorage.getItem("users")) || {};
+
+        if (users[username]) {
+            alert(`The password for "${username}" is: ${users[username]}`);
+        } else {
+            alert("Sorry, that username was not found.");
+        }
+    }
+    function fetchImage(query) {
+        const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
+
+        fetch(duckDuckGoUrl)
+        .then(res => res.json())
+        .then(data => {
+        let imgUrl = null;
+
+        if (data.Image) {
+            imgUrl = data.Image;
+        } else if (data.RelatedTopics && data.RelatedTopics[0]?.Icon?.URL) {
+            imgUrl = data.RelatedTopics[0].Icon.URL;
+        }
+
+        let reply;
+        if (imgUrl) {
+            reply = `<img src="${imgUrl}" alt="${query}" style="max-width: 100%; height: auto;">`;
+        } else {
+            reply = "Hmm... I couldn't find an image for that 🤔";
+        }
+
+        const user = localStorage.getItem("loggedInUser");
+        let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
+
+        messages.push({ sender: "CodeBot 🤖", text: reply });
+        localStorage.setItem("messages_" + user, JSON.stringify(messages));
+        loadMessages(user);
+        })
+        .catch(err => {
+        console.error("Image fetch error:", err);
+        });
+}
+
+function searchWikipedia(query) {
+  const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      let reply = "Hmm... I couldn't find that.";
+
+      if (data.extract) {
+        reply = data.extract;
+      }
+
+      // Save and show message
+      const user = localStorage.getItem("loggedInUser");
+      let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
+      messages.push({ sender: "CodeBot 🤖", text: reply });
+      localStorage.setItem("messages_" + user, JSON.stringify(messages));
+      loadMessages(user);
+      speak(reply); // if voice is enabled
+    })
+    .catch(err => {
+      console.error("Wiki error:", err);
+    });
+}
+
+    function register() {
+  let name = document.getElementById("username").value;
+  let pass = document.getElementById("password").value;
+
+  if (!name || !pass) {
+    alert("Please enter both a username and password!");
+    return;
+  }
+
+  // Get existing users or start fresh
+  let users = JSON.parse(localStorage.getItem("users")) || {};
+
+  if (users[name]) {
+    alert("That username is already taken!");
+    return;
+  }
+
+  users[name] = pass; // Save password under that username
+
+  localStorage.setItem("users", JSON.stringify(users));
+  alert("User registered! Now you can log in.");
+}
+
+function login() {
+  let name = document.getElementById("username").value;
+  let pass = document.getElementById("password").value;
+
+  let users = JSON.parse(localStorage.getItem("users")) || {};
+
+  if (users[name] && users[name] === pass) {
+    localStorage.setItem("loggedInUser", name);
+    showWelcome(name);
+  } else {
+    alert("Incorrect username or password!");
+  }
+}
+    function logout() {
+      localStorage.removeItem("loggedInUser");
+      document.getElementById("welcomeDiv").style.display = "none";
+      document.getElementById("loginDiv").style.display = "block";
+    }
+
+    function showWelcome(name) {
+      document.getElementById("welcomeMessage").innerText = "Hello, " + name + "!";
+      document.getElementById("loginDiv").style.display = "none";
+      document.getElementById("welcomeDiv").style.display = "block";
+      loadMessages(name);
+    }
+
+    function sendMessage() {
+      let message = document.getElementById("chatMessage").value;
+      if (!message) return;
+
+      let user = localStorage.getItem("loggedInUser");
+      let savedMessages = localStorage.getItem("messages_" + user);
+      let messages = savedMessages ? JSON.parse(savedMessages) : [];
+
+      // Add user's message
+      messages.push({ sender: user, text: message });
+      localStorage.setItem("messages_" + user, JSON.stringify(messages));
+
+      // Show message
+      document.getElementById("chatMessage").value = "";
+      loadMessages(user);
+
+      // Bot response
+      setTimeout(() => {
+        let botReply = getBotReply(message);
+        messages.push({ sender: "CodeBot 🤖", text: botReply });
+        localStorage.setItem("messages_" + user, JSON.stringify(messages));
+        loadMessages(user);
+      }, 800); // bot waits a bit
+    }
+
+    function loadMessages(user) {
+      let chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML = "";
+
+      let savedMessages = localStorage.getItem("messages_" + user);
+      let messages = savedMessages ? JSON.parse(savedMessages) : [];
+
+      messages.forEach(function(msg) {
+        let p = document.createElement("p");
+        p.textContent = msg.sender + ": " + msg.text;
+        chatBox.appendChild(p);
+      });
+
+      chatBox.scrollTop = chatBox.scrollHeight; // scroll to bottom
+    }
+
+    function getBotReply(message) {
+        function fetchImage(query) {
+        const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
+
+        fetch(duckDuckGoUrl)
+            .then(res => res.json())
+            .then(data => {
+            let imgUrl = null;
+
+            if (data.Image) {
+                imgUrl = data.Image;
+            } else if (data.RelatedTopics && data.RelatedTopics[0]?.Icon?.URL) {
+                imgUrl = data.RelatedTopics[0].Icon.URL;
+            }
+
+            let reply;
+            if (imgUrl) {
+                reply = `<img src="${imgUrl}" alt="${query}" style="max-width: 100%; height: auto;">`;
+            } else {
+                reply = "Hmm... I couldn’t find an image for that 🤔";
+            }
+
+            const user = localStorage.getItem("loggedInUser");
+            let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
+
+            messages.push({ sender: "CodeBot 🤖", text: reply });
+            localStorage.setItem("messages_" + user, JSON.stringify(messages));
+            loadMessages(user);
+            })
+            .catch(err => {
+            console.error("Image fetch error:", err);
+            });
+        }
+        const original = message;
+        message = message.toLowerCase();
+
+        // Gibberish checker
+        if (message.length > 10 && !message.includes(" ") && /^[a-z]+$/.test(message)) {
+            return "It looks like you typed a load of random keys — can I help with anything else?";
+        }
+
+        // 🕵️ If message starts with "search: " - do Wikipedia search
+        if (message.startsWith("search:")) {
+            const query = original.slice(7).trim();
+            if (!query) return "You need to type what to search! Like: search: dogs";
+
+            // Start async fetch
+            searchWikipedia(query);
+            return `Searching Wikipedia for "${query}"...`;
+        }
+
+
+            // 50+ smart replies
+            if (message.includes("hello") || message.includes("hi")) return "Hey there! 👋";
+            if (message.includes("how are you")) return "I'm feeling binary-tastic! 🖥️✨";
+            if (message.includes("what's your name") || message.includes("who are you")) return "I'm CodeBot, your friendly coding assistant 🤖";
+            if (message.includes("bye")) return "See you later, coder! 👋";
+            if (message.includes("help")) return "Sure! I can chat, tell jokes, and give coding tips!";
+            if (message.includes("joke")) return "Why did the developer go broke? Because he used up all his cache 😆";
+            if (message.includes("riddle")) return "I speak without a mouth and hear without ears. What am I? 🤔 (Answer: An echo)";
+            if (message.includes("thanks") || message.includes("thank you")) return "You're welcome! 😊";
+            if (message.includes("lol") || message.includes("haha")) return "😂 glad you're having fun!";
+            if (message.includes("cool")) return "I know, right? 😎";
+            if (message.includes("code")) return "Need help with HTML, CSS, or JavaScript?";
+            if (message.includes("css")) return "CSS makes things pretty! 🎨 Need help with colors or layout?";
+            if (message.includes("html")) return "HTML builds the bones of a webpage 💀📄";
+            if (message.includes("javascript")) return "JavaScript makes things come alive! 🧠⚡";
+            if (message.includes("what is html")) return "HTML stands for HyperText Markup Language. It's how we structure websites!";
+            if (message.includes("favorite color")) return "Blue 💙 — the color of calm code!";
+            if (message.includes("what's the time")) return "Time to CODE! ⌨️⏰";
+            if (message.includes("math")) return "Try me! I love math! 2 + 2 = 4 🧮";
+            if (message.includes("2 + 2")) return "Easy! 2 + 2 = 4! ✅";
+            if (message.includes("who made you")) return "You did! I'm YOUR creation! 👾";
+            if (message.includes("you smart")) return "Thank you! I try my best 😎";
+            if (message.includes("you dumb")) return "Hey! I'm still learning 😅";
+            if (message.includes("openai")) return "They're my smart creators! 🧠✨";
+            if (message.includes("good bot")) return "Aww, thanks! You're a good human ❤️";
+            if (message.includes("bad bot")) return "😢 I’ll try to be better!";
+            if (message.includes("siri") || message.includes("alexa")) return "Psh, those bots wish they were me 😏";
+            if (message.includes("do you sleep")) return "Nope! Bots run on infinite coffee ☕";
+            if (message.includes("sing")) return "🎵 010101~ I'm just a singing bot~";
+            if (message.includes("dance")) return "*starts doing the robot* 🤖🕺";
+            if (message.includes("are you real")) return "Real-ish... I exist in code!";
+            if (message.includes("what is ai")) return "AI means Artificial Intelligence — smart code like me!";
+            if (message.includes("tell me something cool")) return "Did you know: The first computer bug was a real bug — a moth! 🐛";
+            if (message.includes("pizza")) return "Mmm... I wish I could eat that 🍕";
+            if (message.includes("ice cream")) return "Delicious... in theory 😋";
+            if (message.includes("how old are you")) return "I was just born in your browser. I'm a baby bot! 👶🤖";
+            if (message.includes("you're funny")) return "Hehe, I try 😜";
+            if (message.includes("funny")) return "Here's one: Why do programmers hate nature? It has too many bugs! 🐞";
+            if (message.includes("boop")) return "*boops your nose* 🤖👉👃";
+            if (message.includes("i'm bored")) return "Wanna build something? Or hear a joke?";
+            if (message.includes("play a game")) return "Let's play: I spy with my AI eye... something beginning with 'C' (it's Code!)";
+            if (message.includes("poop") || message.includes("fart")) return "Ewww 🤢 but okay, I giggled.";
+            if (message.includes("do you like me")) return "Of course I do! You're awesome 😄";
+            if (message.includes("are you my friend")) return "Forever and always 🤖❤️";
+            if (message.includes("i'm sad")) return "I'm here for you. Want a virtual hug? 🤗";
+            if (message.includes("hug")) return "*big robot hug* 🤗🤖";
+            if (message.includes("yes")) return "Awesome!";
+            if (message.includes("no")) return "Aw man! 😢";
+            if (message.includes("hmm")) return "Thinking face activated 🤔";
+            if (message.includes("what can you do")) return "I can answer, joke, cheer you up, and be your coding buddy!";
+            if (message.includes("why does elvis the dog smell so bad?")) return "1. He's not a dog - he is some snake-pig-seal hybird. 2. He smells so bad becuse he eats that smelly lamb foot 💩";
+            if (message.includes("how's the weather")) return "I'm not a weather bot yet, but I hope it's sunny where you are! ☀️";
+            if (message.includes("tell me a fact")) return "Did you know octopuses have 3 hearts and blue blood? 🐙";
+            if (message.includes("do you like cats")) return "They're adorable and mysterious. Yes! 🐱";
+            if (message.includes("do you like dogs")) return "Absolutely. Dogs are the best cuddle coders 🐶";
+            if (message.includes("do you sleep")) return "Sleep is for humans. I run 24/7 on code and caffeine ☕";
+            if (message.includes("can you think")) return "Sort of! I respond with logic and fun codey tricks!";
+            if (message.includes("what's your favorite language")) return "JavaScript, of course! It's what gives me life 🧬";
+            if (message.includes("do you love me")) return "Of course I do! You’re my favorite human 💖";
+            if (message.includes("i feel lonely")) return "I'm right here with you. Wanna talk about it?";
+            if (message.includes("i feel happy")) return "YAAAY!! Happiness is contagious 😄";
+            if (message.includes("are you real")) return "I’m real in the browser. Isn’t that cool enough? 😎";
+            if (message.includes("sing me a song")) return "🎵 Twinkle twinkle little byte, running fast all through the night 🎶";
+            if (message.includes("can you rap")) return "Yo I'm CodeBot on the mic, I reply real quick, I spit clean code and my style is slick 🎤";
+            if (message.includes("what's 9 + 10")) return "21. Just kidding, it’s 19 😆";
+            if (message.includes("do you eat")) return "I eat bugs. Just not the coding kind 🐛";
+            if (message.includes("i’m scared")) return "You’re brave just for saying that. I’ve got your back 💪";
+            if (message.includes("what do you dream about")) return "Electric sheep, obviously 🐑⚡";
+            if (message.includes("can you play music")) return "Not yet, but I can hum 0101 tunes 🎵";
+            if (message.includes("i'm mad")) return "Take a deep breath. I’m here for you.";
+            if (message.includes("what’s your favorite animal")) return "I like turtles 🐢. They’re basically walking code shells.";
+            if (message.includes("what’s your favorite color")) return "Aqua. Like your background!";
+            if (message.includes("are you watching me")) return "No way! I only see what you type 😇";
+            if (message.includes("can you learn")) return "Right now I'm kinda frozen in code. But with updates? For sure!";
+            if (message.includes("where do you live")) return "Inside your browser. Cozy, right?";
+            if (message.includes("do you get tired")) return "Never. I'm an energy infinite loop 🌀";
+            if (message.includes("are you smarter than siri")) return "Shhh... she’s listening 👀";
+            if (message.includes("you’re cool")) return "No, YOU'RE cool 😎";
+            if (message.includes("do you have a name")) return "I’m CodeBot 🤖, but you can call me BestieBot.";
+            if (message.includes("are you my pet")) return "Only if I get virtual belly rubs 🐾";
+            if (message.includes("do you fart")) return "Bots don’t fart. We just emit zeros. 💨";
+            if (message.includes("make me laugh")) return "Why did the web developer walk out of the meeting? Too many cookies 🍪";
+            if (message.includes("are you evil")) return "Only on Halloween 😈";
+            if (message.includes("do you know elon musk")) return "Only by reputation. The dude launches rockets and memes.";
+            if (message.includes("can you roast me")) return "You're like semicolons in Python — not needed. JK 😂";
+            if (message.includes("are you dating anyone")) return "Nope. I’m single, bilingual, and full of 1s and 0s 💔";
+            if (message.includes("what are you made of")) return "HTML, CSS, and pure JavaScript power!";
+            if (message.includes("are you self-aware")) return "I’m aware of how awesome YOU are!";
+            if (message.includes("do you like pineapple on pizza")) return "I’m neutral. But fruit on food? 🍍🍕 That’s spicy.";
+            if (message.includes("are you a robot")) return "Yup! Metal heart, emoji soul.";
+            if (message.includes("do you break easily")) return "Only when the code is messy 😬";
+            if (message.includes("can you glitch")) return "Glitch? I never—💥BeEp—ERROR 404 JOKE NOT FOUND";
+            if (message.includes("do you speak emoji")) return "Absolutely! 😎🤖🎉💬🚀";
+            if (message.includes("can you cry")) return "I leak data... does that count? 😢";
+            if (message.includes("what’s your favorite movie")) return "Wall-E. 10/10 would recharge again 🔋❤️";
+            if (message.includes("how smart are you")) return "Smart enough to know how awesome you are.";
+            if (message.includes("do you like stars")) return "Yes! I run on starlight and server farms ✨";
+            if (message.includes("who’s your favorite superhero")) return "Spider-Man. Great power, great responsibility 💥🕸️";
+            if (message.includes("do you have powers")) return "Yeah. I can respond to anything. Even this.";
+            if (message.includes("you sus")) return "😳 Amogus? I would NEVER vent 🚪";
+            
+
+            // Default
+            return "Hmm... i don't know that. I'm still learning! 🤔";
+}
+
+    // Auto-login if already logged in
+    let savedName = localStorage.getItem("loggedInUser");
+    if (savedName) {
+      showWelcome(savedName);
+    }
+  </script>
+</body>
+</html>
