@@ -19,6 +19,11 @@
   <div id="welcomeDiv" style="display: none;">
     <h2 id="welcomeMessage"></h2>
     <button onclick="logout()">Log Out</button>
+    <div>
+      <label for="botNameInput">Name your bot:</label>
+      <input type="text" id="botNameInput" placeholder="e.g. ByteBuddy">
+      <button onclick="setBotName()">Set Name</button>
+    </div>
 
     <hr>
 
@@ -40,6 +45,15 @@
 
   <script>
     let botMemory = JSON.parse(localStorage.getItem("botMemory")) || {};
+
+
+    function setBotName() {
+  const newName = document.getElementById("botNameInput").value;
+  if (newName.trim()) {
+    localStorage.setItem("botName", newName);
+    alert(`Your bot is now named ${newName}!`);
+  }
+}
 
 function handleDropdownChange() {
   const value = document.getElementById("optionsDropdown").value;
@@ -187,29 +201,25 @@ function login() {
     }
 
     function sendMessage() {
-      let message = document.getElementById("chatMessage").value;
-      if (!message) return;
+  const message = chatMessage.value;
+  if (!message) return;
 
-      let user = localStorage.getItem("loggedInUser");
-      let savedMessages = localStorage.getItem("messages_" + user);
-      let messages = savedMessages ? JSON.parse(savedMessages) : [];
+  const user = localStorage.getItem("loggedInUser");
+  let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
 
-      // Add user's message
-      messages.push({ sender: user, text: message });
-      localStorage.setItem("messages_" + user, JSON.stringify(messages));
+  messages.push({ sender: user, text: message });
+  localStorage.setItem("messages_" + user, JSON.stringify(messages));
+  chatMessage.value = "";
+  loadMessages(user);
 
-      // Show message
-      document.getElementById("chatMessage").value = "";
-      loadMessages(user);
-
-      // Bot response
-      setTimeout(() => {
-        let botReply = getBotReply(message);
-        messages.push({ sender: "CodeBot 🤖", text: botReply });
-        localStorage.setItem("messages_" + user, JSON.stringify(messages));
-        loadMessages(user);
-      }, 800); // bot waits a bit
-    }
+  setTimeout(() => {
+    const reply = getBotReply(message);
+    const botName = localStorage.getItem("botName") || "CodeBot 🤖";
+    messages.push({ sender: botName, text: reply });
+    localStorage.setItem("messages_" + user, JSON.stringify(messages));
+    loadMessages(user);
+  }, 800);
+}
 
     function loadMessages(user) {
       let chatBox = document.getElementById("chatBox");
