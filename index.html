@@ -32,7 +32,9 @@
 <select id="optionsDropdown" onchange="handleDropdownChange()">
   <option value="">--Select an option--</option>
   <option value="clear">Clear Chat</option>
-  <option value="dark">Toggle Dark Mode</option>
+  <option value="dark">Toggle Light Mode</option>
+  <option value="Light">Toggle Dark Mode</option>
+  <option value="Purple">Toggle Purple Mode</option>
 </select>
       <h3>Chat:</h3>
       <div id="chatBox" style="border: 1px solid #000; padding: 10px; height: 200px; overflow-y: scroll;">
@@ -44,6 +46,12 @@
   </div>
 
   <script>
+
+    function ShowImage() {
+      const imageus = document.createElement('img');
+      imageus.src="artworks-9ciCmc3RcoUhwWzD-Mcdwsw-t1080x1080.jpg"
+    }
+    
     let botMemory = JSON.parse(localStorage.getItem("botMemory")) || {};
 
 
@@ -62,6 +70,10 @@ function handleDropdownChange() {
     clearChat();
   } else if (value === "dark") {
     toggleDarkMode();
+  }  else if (value === "Light") {
+    toggleLightMode();
+  } else if (value === "Purple") {
+    togglePurpleMode();
   }
 
   // Reset dropdown back to default
@@ -78,7 +90,15 @@ function clearChat() {
 }
 
 function toggleDarkMode() {
+  document.getElementById('Body').style.backgroundColor = "White";
+}
+
+function toggleLightMode() {
   document.getElementById('Body').style.backgroundColor = "Gray";
+}
+
+function togglePurpleMode() {
+  document.getElementById('Body').style.backgroundColor = "Purple";
 }
 
     function forgotPassword() {
@@ -93,38 +113,6 @@ function toggleDarkMode() {
             alert("Sorry, that username was not found.");
         }
     }
-    function fetchImage(query) {
-        const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
-
-        fetch(duckDuckGoUrl)
-        .then(res => res.json())
-        .then(data => {
-        let imgUrl = null;
-
-        if (data.Image) {
-            imgUrl = data.Image;
-        } else if (data.RelatedTopics && data.RelatedTopics[0]?.Icon?.URL) {
-            imgUrl = data.RelatedTopics[0].Icon.URL;
-        }
-
-        let reply;
-        if (imgUrl) {
-            reply = `<img src="${imgUrl}" alt="${query}" style="max-width: 100%; height: auto;">`;
-        } else {
-            reply = "Hmm... I couldn't find an image for that 🤔";
-        }
-
-        const user = localStorage.getItem("loggedInUser");
-        let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
-
-        messages.push({ sender: "CodeBot 🤖", text: reply });
-        localStorage.setItem("messages_" + user, JSON.stringify(messages));
-        loadMessages(user);
-        })
-        .catch(err => {
-        console.error("Image fetch error:", err);
-        });
-}
 
 function searchWikipedia(query) {
   const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
@@ -230,89 +218,81 @@ function login() {
 
       messages.forEach(function(msg) {
         let p = document.createElement("p");
-        p.textContent = msg.sender + ": " + msg.text;
-        chatBox.appendChild(p);
+        if (msg.text.includes("<img")) {
+        p.innerHTML = `<strong>${msg.sender}:</strong><br>${msg.text}`;
+      } else {
+        p.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+      }
+              chatBox.appendChild(p);
       });
 
       chatBox.scrollTop = chatBox.scrollHeight; // scroll to bottom
     }
 
     function getBotReply(message) {
-        function fetchImage(query) {
-        const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
+      message = message.toLowerCase();
+  const originalMessage = message;
 
-        fetch(duckDuckGoUrl)
-            .then(res => res.json())
-            .then(data => {
-            let imgUrl = null;
+  // ✅ IMAGE FETCH — DuckDuckGo API
+  if (message.startsWith("show me an image of") || message.startsWith("picture of")) {
+    let searchTerm = message.replace("show me an image of", "").replace("picture of", "").trim();
+    if (!searchTerm) return "Please type something like: 'Show me an image of a dog 🐶'";
+    
+    const duckDuckGoURL = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchTerm)}&format=json&pretty=1`;
+    
+    fetch(duckDuckGoURL)
+      .then(res => res.json())
+      .then(data => {
+        let imgUrl = null;
 
-            if (data.Image) {
-                imgUrl = data.Image;
-            } else if (data.RelatedTopics && data.RelatedTopics[0]?.Icon?.URL) {
-                imgUrl = data.RelatedTopics[0].Icon.URL;
-            }
-
-            let reply;
-            if (imgUrl) {
-                reply = `<img src="${imgUrl}" alt="${query}" style="max-width: 100%; height: auto;">`;
-            } else {
-                reply = "Hmm... I couldn’t find an image for that 🤔";
-            }
-
-            const user = localStorage.getItem("loggedInUser");
-            let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
-
-            messages.push({ sender: "CodeBot 🤖", text: reply });
-            localStorage.setItem("messages_" + user, JSON.stringify(messages));
-            loadMessages(user);
-            })
-            .catch(err => {
-            console.error("Image fetch error:", err);
-            });
-        }
-        const original = message;
-        message = message.toLowerCase();
-
-        // Gibberish checker
-        if (message.length > 10 && !message.includes(" ") && /^[a-z]+$/.test(message)) {
-            return "It looks like you typed a load of random keys — can I help with anything else?";
+        if (data.Image) {
+          imgUrl = data.Image;
+        } else if (data.RelatedTopics && data.RelatedTopics[0]?.Icon?.URL) {
+          imgUrl = data.RelatedTopics[0].Icon.URL;
         }
 
-        // 🕵️ If message starts with "search: " - do Wikipedia search
-        if (message.startsWith("search:")) {
-            const query = original.slice(7).trim();
-            if (!query) return "You need to type what to search! Like: search: dogs";
+        let reply = imgUrl
+          ? `<img src="${imgUrl}" alt="${searchTerm}" style="max-width:100%; border-radius:10px;">`
+          : "Hmm... I couldn't find an image for that 🤔";
 
-            // Start async fetch
-            searchWikipedia(query);
-            return `Searching Wikipedia for "${query}"...`;
-        }
+        const user = localStorage.getItem("loggedInUser");
+        let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
+        messages.push({ sender: "CodeBot 🤖", text: reply });
+        localStorage.setItem("messages_" + user, JSON.stringify(messages));
+        loadMessages(user);
+      })
+      .catch(err => console.error("Image fetch error:", err));
 
-        // 🧠 Learn things like "my favorite color is blue"
-let learnMatch = message.match(/^my (.+?) is (.+)$/i);
-if (learnMatch) {
-  let key = learnMatch[1].toLowerCase().trim();
-  let value = learnMatch[2].trim();
-
-  botMemory[key] = value;
-  localStorage.setItem("botMemory", JSON.stringify(botMemory));
-
-  return `Okay! I'll remember your ${key} is ${value}.`;
-}
-
-let recallMatch = message.match(/what(?:'s| is) my (.+)\??/i);
-if (recallMatch) {
-  let key = recallMatch[1].toLowerCase().trim();
-  if (botMemory[key]) {
-    return `You told me your ${key} is ${botMemory[key]}! 🤖`;
-  } else {
-    return `I don't remember your ${key}. Tell me like: "My ${key} is ..."`;
+    return `Looking for an image of ${searchTerm}... 🔍`;
   }
-}
 
-            // 50+ smart replies
-      
-            if (message.includes("hello") || message.includes("hi")) return "Hey there! 👋";
+  // 🧠 MEMORY: Save facts like "my favorite color is blue"
+  let learnMatch = message.match(/^my (.+?) is (.+)$/i);
+  if (learnMatch) {
+    let key = learnMatch[1].toLowerCase().trim();
+    let value = learnMatch[2].trim();
+    botMemory[key] = value;
+    localStorage.setItem("botMemory", JSON.stringify(botMemory));
+    return `Okay! I'll remember your ${key} is ${value}.`;
+  }
+
+  // 🧠 RECALL: "what is my favorite color?"
+  let recallMatch = message.match(/what(?:'s| is) my (.+)\??/i);
+  if (recallMatch) {
+    let key = recallMatch[1].toLowerCase().trim();
+    if (botMemory[key]) {
+      return `You told me your ${key} is ${botMemory[key]}! 🤖`;
+    } else {
+      return `I don't remember your ${key}. Tell me like: "My ${key} is ..."`;
+    }
+  }
+
+  // 🔤 Gibberish check
+  if (message.length > 10 && !message.includes(" ") && /^[a-z]+$/.test(message)) {
+    return "That looks like gibberish 😅 Want to try asking something else?";
+  }
+  // HARD-CODED SMART REPLIES (truncated version for space, use full list in real implementation)
+  if (message.includes("hello") || message.includes("hi")) return "Hey there! 👋";
             if (message.includes("how are you")) return "I'm feeling binary-tastic! 🖥️✨";
             if (message.includes("what's your name") || message.includes("who are you")) return "I'm CodeBot, your friendly coding assistant 🤖";
             if (message.includes("bye")) return "See you later, coder! 👋";
@@ -511,10 +491,41 @@ if (recallMatch) {
             if (message.includes("do you play tournaments")) return "Only in the Cloud Cup ☁️⚽";
             if (message.includes("are you a football fan")) return "Absolutely. I cheer in binary! 01010011!";
             if (message.includes("Who's better messi or ronaldo")) return "Ronaldo";
-            
+            if (message.includes("image of elvis")) ShowImage();
+  // Add all other specific replies as needed using the same format.
+  // Full list available in original message — too long for code block.
 
-            // Default
-            return "Hmm... i don't know that. I'm still learning! 🤔";
+  return "Hmm... I don't know that. I'm still learning! 🤔";
+}
+
+function fetchImage(query) {
+  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      let imgUrl = null;
+
+      if (data.Image) {
+        imgUrl = data.Image;
+      } else if (data.RelatedTopics?.[0]?.Icon?.URL) {
+        imgUrl = data.RelatedTopics[0].Icon.URL;
+      }
+
+      const user = localStorage.getItem("loggedInUser");
+      let messages = JSON.parse(localStorage.getItem("messages_" + user)) || [];
+
+      let reply = imgUrl
+        ? `<img src="${imgUrl}" alt="${query}" style="max-width: 100%; border-radius: 8px;">`
+        : `Hmm... I couldn’t find an image for "${query}" 😅`;
+
+      messages.push({ sender: "CodeBot 🤖", text: reply });
+      localStorage.setItem("messages_" + user, JSON.stringify(messages));
+      loadMessages(user);
+    })
+    .catch(err => {
+      console.error("Image fetch error:", err);
+    });
 }
 
     // Auto-login if already logged in
