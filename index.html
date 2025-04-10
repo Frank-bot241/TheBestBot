@@ -14,11 +14,8 @@
     <button onclick="login()">Log In</button>
     <br><br>
     <button onclick="forgotPassword()">Forgot Password?</button>
-    <button onclick="DarkActivate()">Dark</button>
-    <button onclick="LightActivate()">Light</button>
   </div>
 
-  <!-- Chat and Welcome -->
   <div id="welcomeDiv" style="display: none;">
     <h2 id="welcomeMessage"></h2>
     <button onclick="logout()">Log Out</button>
@@ -26,6 +23,12 @@
     <hr>
 
     <div>
+      <label for="optionsDropdown">Choose an option:</label>
+<select id="optionsDropdown" onchange="handleDropdownChange()">
+  <option value="">--Select an option--</option>
+  <option value="clear">Clear Chat</option>
+  <option value="dark">Toggle Dark Mode</option>
+</select>
       <h3>Chat:</h3>
       <div id="chatBox" style="border: 1px solid #000; padding: 10px; height: 200px; overflow-y: scroll;">
         <!-- Messages will go here -->
@@ -37,15 +40,31 @@
 
   <script>
 
-    function DarkActivate() {
-      const body = document.getElementById('Body');
-      body.style.backgroundColor = "darkgray";
-    }
+function handleDropdownChange() {
+  const value = document.getElementById("optionsDropdown").value;
 
-    function LightActivate() {
-      const body = document.getElementById('Body');
-      body.style.backgroundColor = "white";
-    }
+  if (value === "clear") {
+    clearChat();
+  } else if (value === "dark") {
+    toggleDarkMode();
+  }
+
+  // Reset dropdown back to default
+  document.getElementById("optionsDropdown").value = "";
+}
+
+function clearChat() {
+  const user = localStorage.getItem("loggedInUser");
+  if (user) {
+    localStorage.removeItem("messages_" + user);
+    loadMessages(user);
+    alert("Chat cleared!");
+  }
+}
+
+function toggleDarkMode() {
+  document.getElementById('Body').style.backgroundColor = "Gray";
+}
 
     function forgotPassword() {
         let username = prompt("Enter your username:");
