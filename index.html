@@ -2,13 +2,8 @@
 <html>
 <head>
   <title>Chat with CodeBot 🤖</title>
-  <style>
-    body {
-        background-color: aqua;
-    }
-  </style>
 </head>
-<body>
+<body id="Body">
   <h1>Welcome!</h1>
 
   <!-- Login/Register -->
@@ -19,6 +14,8 @@
     <button onclick="login()">Log In</button>
     <br><br>
     <button onclick="forgotPassword()">Forgot Password?</button>
+    <button onclick="DarkActivate()">Dark</button>
+    <button onclick="LightActivate()">Light</button>
   </div>
 
   <!-- Chat and Welcome -->
@@ -39,6 +36,17 @@
   </div>
 
   <script>
+
+    function DarkActivate() {
+      const body = document.getElementById('Body');
+      body.style.backgroundColor = "darkgray";
+    }
+
+    function LightActivate() {
+      const body = document.getElementById('Body');
+      body.style.backgroundColor = "white";
+    }
+
     function forgotPassword() {
         let username = prompt("Enter your username:");
         if (!username) return;
